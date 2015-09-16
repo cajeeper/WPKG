@@ -10385,6 +10385,51 @@ function reboot() {
 		case "special":
 			psreboot();
 			break;
+		case "winShutdown":
+			var fso = new ActiveXObject("Scripting.FileSystemObject");
+			rebootCmd = '%SystemRoot%\\System32\\shutdown.exe';
+			if (!fso.FileExists(new ActiveXObject("WScript.Shell").ExpandEnvironmentStrings(rebootCmd))) {
+					throw new Error("Could not locate rebootCmd '" + rebootCmd + "'.");
+				}
+			
+			// getting date
+			var d = new Date();
+			var tZ=((d.getTimezoneOffset()<0)? "+"+(-1*d.getTimezoneOffset()) : "-"+d.getTimezoneOffset());
+			var tM=((d.getMonth()+1)>=10)? (d.getMonth()+1) : '0' + (d.getMonth()+1);  
+			var tD=((d.getDate())>=10)? (d.getDate()) : '0' + (d.getDate());
+			var dteCutOffDate =  d.getFullYear() + tM + tD + "000000.0" + tZ;
+			
+			// looking for any previous shutdown.exe 1074 shutdown events within the last day
+			var wmi = GetObject("winmgmts:{impersonationLevel=impersonate,(Security)}!\\\\.\\root\\cimv2");
+			var win = wmi.ExecQuery("Select * from Win32_NTLogEvent Where Logfile = 'System' and EventCode = 1074 and SourceName = 'USER32' and TimeGenerated > '" + dteCutOffDate + "'" , "WQL",48);
+			var e = new Enumerator(win);
+			
+			var eventCount = 0;
+
+			for (; !e.atEnd(); e.moveNext()) {
+			  var x = e.item();
+			  dinfo("Found prior shutdown today at "+x.TimeGenerated);
+			  if ((x.Message).indexOf("shutdown.exe") > 0) {
+			   eventCount += 1;
+			  }
+			}
+			
+			// if no previous shutdown events occurred today, proceed
+			//  else, cancel the shutdown event to prevent looped rebooting
+			if (eventCount == 0) {
+				info("Running a shutdown command: " + rebootCmd);
+				// close files
+				cleanup();
+				// execute shutdown 
+				exec('"'+rebootCmd+'" -f -r -t 600 -d p:4:1 -c "'+getLocalizedString("notifyUserReboot")+'"', 0, null);
+				exit(3010);
+				break;
+			} else {
+				info("A shutdown already happened today : Cancelled Shutdown");
+				cleanup();
+				exit(3010);
+				break;
+			}
 		default:
 			var fso = new ActiveXObject("Scripting.FileSystemObject");
 			if (!fso.FileExists(getRebootCmd())) {
