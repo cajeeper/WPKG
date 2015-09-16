@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+
+<packages:packages
+        xmlns:packages="http://www.wpkg.org/packages" xmlns:wpkg="http://www.wpkg.org/wpkg" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.wpkg.org/packages ../xsd/packages.xsd" >
+
+	<package id="Dell_OptiPlex_9020_NIC_Driver"
+            name="Dell_OptiPlex_9020_NIC_Driver"
+            revision="5"
+            reboot="false"
+            priority="11"
+			notify="false">
+		
+        <variable name="PKG_NAME"           value="Dell_OptiPlex_9020_NIC_Driver" />
+		<check type="uninstall" condition="versiongreaterorequal" path="Intel(R) Network Connections Drivers" value="19.5" />
+
+		<!-- Only Process for OptiPlex 9020 - Any other models will crash the package process and prevent driver launch -->
+		<install cmd='cscript "\\server\Installs\_WPKG\checkModel.js" "OptiPlex 9020"' />
+		
+		<install cmd='"\\server\Installs\OptiPlex 9020\Network_Driver_JGGHH_WN32_19.5.0.0_A11.EXE" /s' >
+			<exit code='any' />
+		</install>
+		
+		<!-- waiting 10 seconds for drivers to settle -->
+		<install cmd='ping 127.0.0.1 -n 10' >
+			<exit code='any' />
+		</install>
+		
+		<upgrade include="install" />
+		
+	</package>
+	
+</packages:packages>
